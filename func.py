@@ -1,5 +1,6 @@
 from app.link import Link
-from datetime import timedelta
+from datetime import timedelta, datetime
+from threading import Thread
 
 
 class Route:
@@ -19,8 +20,8 @@ class Route:
 
     def __str__(self) -> str:
         return f'''Route: {" > ".join(point for point in self.points)}
-        Km: {self.km}
-        Time to arrive: {self.time_to_arrive}
+Km: {self.km}
+Time to arrive: {self.time_to_arrive}
         '''
     
     @property
@@ -44,9 +45,9 @@ class Route:
         
         return None
 
+routes: list[Route] = []
 
-
-def make_possibilities(array: list[str]) -> list[list]:
+def make_possibilities(array: list[str]) -> list[list[str]]:
     # This function will calculate all of the route possibilities and return an array with the possibilities
 
     if len(array) == 1:
@@ -64,82 +65,108 @@ def make_possibilities(array: list[str]) -> list[list]:
     return all_possibilities
 
 
-def make_routes(link: Link, destinations: list[str]) -> list[Route]:
+def make_routes(origin: str, destinations: list[list[str]]) -> None:
     # This function will make all the routes possibilities to see wich one is the better
 
-    first_route = True
-    route_list = []
+    # Link instance
+    try:
+        link = Link(
+            url='https://www.google.com.br/maps',
+            sleep=0.5
+        )
 
-    for route in make_possibilities(destinations):
-        
+        link.open()
+        #link.maximize()
+
+        link.click_element('//*[@id="hArJGc"]')
+
+        link.click_element('//*[@id="omnibox-directions"]/div/div[2]/div/div/div/div[2]/button')
+
+        first_route = True
+        route_list = []
+
         link.clear_field('/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[1]/div[2]/div[1]/div/input')
-        link.send_keys('/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[1]/div[2]/div[1]/div/input', route[0])
+        link.send_keys('/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[1]/div[2]/div[1]/div/input', origin)
         link.press_key('enter')
 
-        link.clear_field('/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[2]/div[2]/div[1]/div/input')
-        link.send_keys('/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[2]/div[2]/div[1]/div/input', route[1])
-        link.press_key('enter')
+        for route in destinations:
 
-        if len(route) > 2:
-            div_number = 3
+            link.clear_field('/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[2]/div[2]/div[1]/div/input')
+            link.send_keys('/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[2]/div[2]/div[1]/div/input', route[0])
+            link.press_key('enter')
 
-            if first_route:
-                for _ in range(len(route) - 2):
-                    link.click_element('/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/button')
-                    link.clear_field(f'/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[{div_number}]/div[2]/div[1]/div/input')
-                    link.send_keys(f'/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[{div_number}]/div[2]/div[1]/div/input', route[div_number-1])
-                    link.press_key('enter')
+            if len(route) > 2:
+                div_number = 3
 
-                    div_number += 1
+                if first_route:
+                    for _ in range(len(route) - 1):
+                        link.click_element('/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/button')
+                        link.clear_field(f'/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[{div_number}]/div[2]/div[1]/div/input')
+                        link.send_keys(f'/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[{div_number}]/div[2]/div[1]/div/input', route[div_number-2])
+                        link.press_key('enter')
 
-                first_route = False
+                        div_number += 1
 
-            else:
-                for _ in range(len(route) - 2):
-                    link.clear_field(f'/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[{div_number}]/div[2]/div[1]/div/input')
-                    link.send_keys(f'/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[{div_number}]/div[2]/div[1]/div/input', route[div_number-1])
-                    link.press_key('enter')
+                    first_route = False
 
-                    div_number += 1
+                else:
+                    for _ in range(len(route) - 1):
+                        link.clear_field(f'/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[{div_number}]/div[2]/div[1]/div/input')
+                        link.send_keys(f'/html/body/div[1]/div[3]/div[8]/div[3]/div[1]/div[2]/div/div[3]/div[1]/div[{div_number}]/div[2]/div[1]/div/input', route[div_number-2])
+                        link.press_key('enter')
 
-        route_list.append(Route(
-            time_to_arrive=link.element_text('//*[@id="section-directions-trip-0"]/div[1]/div/div[1]/div[1]').strip(),
-            km=float(link.element_text('//*[@id="section-directions-trip-0"]/div[1]/div/div[1]/div[2]/div').split(' ')[0].replace(',', '.').strip()),
-            points=route
-        ))
+                        div_number += 1
 
-    return route_list
+            route_list.append(Route(
+                time_to_arrive=link.element_text('//*[@id="section-directions-trip-0"]/div[1]/div/div[1]/div[1]').strip(),
+                km=float(link.element_text('//*[@id="section-directions-trip-0"]/div[1]/div/div[1]/div[2]/div').split(' ')[0].replace(',', '.').strip()),
+                points=route
+            ))
+
+        link.quit()
+        
+        routes.append(route_list)
+    except Exception as e:
+        try:
+            link.quit()
+        except:
+            pass
+
+        make_routes(origin, destinations)
+
+def chunks(lst, n):
+    """This functions splits the main list of possibilities in another 6 lists"""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 
 
-def main(destinations: list[str]) -> bool:
+def main(origin: str, destinations: list[str]) -> bool:
     if len(destinations) < 2:
         return False
     
-    # Link instance
+    possibilities = make_possibilities(destinations)
+    possibilities = chunks(possibilities, int(len(possibilities)/6))
 
-    link = Link(
-        url='https://www.google.com.br/maps',
-        sleep=2
-    )
+    threads = []
+    for possibility in possibilities:
+        thread = Thread(target=make_routes, args=(origin, possibility))
+        thread.start()
+        threads.append(thread)
 
-    link.open()
-    link.maximize()
+    for obj in threads:
+        obj.join()
 
-    link.click_element('//*[@id="hArJGc"]')
+    flat_routes = [item for sublist in routes for item in sublist]
 
-    link.click_element('//*[@id="omnibox-directions"]/div/div[2]/div/div/div/div[2]/button')
-    
-    routes = make_routes(link, destinations)
+    duration_sorted_routes = sorted(flat_routes, key=lambda x: x.duration)
+    km_sorted_routes = sorted(flat_routes, key=lambda x: x.km)
 
-    link.quit()
-
-    duration_sorted_routes = sorted(routes, key=lambda x: x.duration)
-    km_sorted_routes = sorted(routes, key=lambda x: x.km)
-
+    print(f'Viagem com origem em {origin}')
     print(f'Viagem com menor duração: {duration_sorted_routes[0]}\n')
     print(f'Viagem com menor quilometragem: {km_sorted_routes[0]}\n')
 
 
-
-main(['Hortolândia', 'Campinas', 'Sumaré'])
+print(f'Início: {datetime.now()}')
+main(origin='', destinations=[])
+print(f'Fim: {datetime.now()}')
 
