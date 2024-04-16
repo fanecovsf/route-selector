@@ -145,7 +145,7 @@ def main(origin: str, destinations: list[str]) -> bool:
         return False
     
     possibilities = make_possibilities(destinations)
-    possibilities = chunks(possibilities, int(len(possibilities)/6))
+    possibilities = chunks(possibilities, int(len(possibilities)/6) if len(possibilities) >= 6 else int(len(possibilities)))
 
     threads = []
     for possibility in possibilities:
@@ -167,6 +167,6 @@ def main(origin: str, destinations: list[str]) -> bool:
 
 
 print(f'Início: {datetime.now()}')
-main(origin='', destinations=[])
+main(origin='Campinas', destinations=['Sumaré', 'Monte mor', 'Barueri'])
 print(f'Fim: {datetime.now()}')
 
